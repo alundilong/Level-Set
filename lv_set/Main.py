@@ -20,7 +20,7 @@ from lv_set.show_fig import draw_all
 
 
 def gourd_params():
-    img = imread('gourd.bmp', True)
+    img = imread('./images/gourd.bmp', True)
     img = np.interp(img, [np.min(img), np.max(img)], [0, 255])
 
     # initialize LSF as binary step function
@@ -46,7 +46,7 @@ def gourd_params():
 
 
 def two_cells_params():
-    img = imread('twocells.bmp', True)
+    img = imread('./images/twocells.bmp', True)
     img = np.interp(img, [np.min(img), np.max(img)], [0, 255])
 
     # initialize LSF as binary step function
