@@ -56,6 +56,50 @@ def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_fun
         phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
     return phi
 
+def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon,upper,lower, timestep, iters, potential_function):  # Updated Level Set Function
+    """
+
+    :param phi_0: level set function to be updated by level set evolution
+    :param g: edge indicator function
+    :param lmda: weight of the weighted length term
+    :param mu: weight of distance regularization term
+    :param alfa: weight of the weighted area term
+    :param epsilon: width of Dirac Delta function
+    :param upper: upper threshold
+    :param lower: lower threshold 
+    :param timestep: time step
+    :param iters: number of iterations
+    :param potential_function: choice of potential function in distance regularization term.
+%              As mentioned in the above paper, two choices are provided: potentialFunction='single-well' or
+%              potentialFunction='double-well', which correspond to the potential functions p1 (single-well)
+%              and p2 (double-well), respectively.
+    """
+    phi = phi_0.copy()
+    eps = 0.5*(upper-lower)
+    T = 0.5*(upper+lower)
+    # [vy, vx] = np.gradient(g)
+    for k in range(iters):
+        phi = neumann_bound_cond(phi)
+        [phi_y, phi_x] = np.gradient(phi)
+        s = np.sqrt(np.square(phi_x) + np.square(phi_y))
+        delta = 1e-10
+        n_x = phi_x / (s + delta)  # add a small positive number to avoid division by zero
+        n_y = phi_y / (s + delta)
+        curvature = div(n_x, n_y)
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace(phi, mode='nearest') - curvature  # compute distance regularization term in equation (13) with the single-well potential p1.
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2(phi)  # compute the distance regularization term in eqaution (13) with the double-well potential p2.
+        else:
+            raise Exception('Error: Wrong choice of potential function. Please input the string "single-well" or "double-well" in the drlse_edge function.')
+        dirac_phi = dirac(phi, epsilon)
+        # print(eps,T,np.min(phi),np.max(phi),np.min(img),np.max(img))
+        area_term =  (eps-np.fabs(img-T))/eps*dirac_phi*2.0
+        print(np.min(area_term),np.max(area_term))
+        edge_term = curvature*dirac_phi*1.5 # curvature term as edge term
+        phi += timestep *0.2* (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
+    return phi
 
 def dist_reg_p2(phi):
     """

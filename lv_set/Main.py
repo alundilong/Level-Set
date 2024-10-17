@@ -41,6 +41,8 @@ def gourd_params():
         'alfa': -3,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
         'sigma': 0.8,  # scale parameter in Gaussian kernel
+        'upper':0.75*255,
+        'lower':0.25*255,
         'potential_function': DOUBLE_WELL,
     }
 
@@ -66,6 +68,8 @@ def two_cells_params():
         'alfa': 1.5,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
         'sigma': 1.5,  # scale parameter in Gaussian kernel
+        'upper':0.75*255,
+        'lower':0.25*255,
         'potential_function': DOUBLE_WELL,
     }
 
