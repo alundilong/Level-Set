@@ -4,6 +4,7 @@ from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
 from lv_set.seg_method import EDGE, THRESHOLD
 from visualize_3d import visualize_3d_image_and_phi_dynamic  # Updated dynamic PyVista visualization function
+from lv_set.save_image import dump_image_to_nii
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE):
@@ -43,6 +44,7 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # Compute the edge indicator function
     f = np.square(Ix) + np.square(Iy) + np.square(Iz)
     g = 1 / (1 + f)
+    dump_image_to_nii(g, "gradient.nii.gz")
 
     # Initialize the level set function (LSF)
     phi = initial_lsf.copy()

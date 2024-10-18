@@ -15,7 +15,7 @@ import numpy as np
 from scipy.ndimage import laplace
 
 from lv_set.potential_func import SINGLE_WELL, DOUBLE_WELL
-
+from lv_set.save_image import dump_image_to_nii, dump_image_to_vtk
 
 def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_function):  # Updated Level Set Function
     """
@@ -33,9 +33,14 @@ def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_fun
 %              potentialFunction='double-well', which correspond to the potential functions p1 (single-well)
 %              and p2 (double-well), respectively.
     """
+    if not hasattr(drlse_edge, "call_count"):
+        drlse_edge.call_count = 0
+    # drlse_edge.call_count += 1
+
     phi = phi_0.copy()
     [vz, vy, vx] = np.gradient(g)  # 3D gradient
     for k in range(iters):
+        drlse_edge.call_count += 1
         phi = neumann_bound_cond(phi)
         [phi_z, phi_y, phi_x] = np.gradient(phi)  # 3D gradient
         s = np.sqrt(np.square(phi_x) + np.square(phi_y) + np.square(phi_z))  # 3D norm
@@ -56,6 +61,10 @@ def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_fun
         area_term = dirac_phi * g
         edge_term = dirac_phi * (vx * n_x + vy * n_y + vz * n_z) + dirac_phi * g * curvature
         phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
+        dump_image_to_vtk(phi,f"innerloop_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(area_term,f"area_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(edge_term,f"edge_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(dist_reg_term,f"dist_reg_term_{drlse_edge.call_count}.vti")
     return phi
 
 def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function):
