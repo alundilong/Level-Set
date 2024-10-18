@@ -16,6 +16,7 @@ from skimage.io import imread
 
 from lv_set.find_lsf import find_lsf
 from lv_set.potential_func import *
+from lv_set.seg_method import *
 from lv_set.show_fig import draw_all
 
 
@@ -27,8 +28,8 @@ def gourd_params():
     c0 = 2
     initial_lsf = c0 * np.ones(img.shape)
     # generate the initial region R0 as two rectangles
-    initial_lsf[24:35, 19:25] = -c0
-    initial_lsf[24:35, 39:50] = -c0
+    initial_lsf[5:55, 5:70] = -c0
+    # initial_lsf[24:35, 39:50] = -c0
 
     # parameters
     return {
@@ -38,12 +39,13 @@ def gourd_params():
         'iter_inner': 10,
         'iter_outer': 30,
         'lmda': 5,  # coefficient of the weighted length term L(phi)
-        'alfa': -3,  # coefficient of the weighted area term A(phi)
+        'alfa': 3,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
         'sigma': 0.8,  # scale parameter in Gaussian kernel
         'upper':250,
         'lower':-1,
         'potential_function': DOUBLE_WELL,
+        'seg_method': THRESHOLD
     }
 
 
@@ -71,6 +73,7 @@ def two_cells_params():
         'upper':56,
         'lower':32,
         'potential_function': DOUBLE_WELL,
+        'seg_method': THRESHOLD
     }
 
 

@@ -15,11 +15,12 @@ from scipy.ndimage import gaussian_filter
 
 from lv_set.drlse_algo import drlse_edge, drlse_threshold
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
+from lv_set.seg_method import EDGE, THRESHOLD
 from lv_set.show_fig import show_fig1, show_fig2, draw_all
 
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, lmda=5,
-             alfa=-3, epsilon=1.5, sigma=0.8, upper = 2, lower = -2, potential_function=DOUBLE_WELL):
+             alfa=-3, epsilon=1.5, sigma=0.8, upper = 2, lower = -2, potential_function=DOUBLE_WELL, seg_method = EDGE):
     """
     :param img: Input image as a grey scale uint8 array (0-255)
     :param initial_lsf: Array as same size as the img that contains the seed points for the LSF.
@@ -64,14 +65,22 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # start level set evolution
     for n in range(iter_outer):
         # print(upper, lower)
-        # phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
-        phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        if seg_method == EDGE:
+            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+        elif seg_method == THRESHOLD:
+            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        else:
+            raise Exception("only support edge or threshold segmentation method!")
         print('show fig 2 for %i time' % n)
         draw_all(phi, img)
 
     # refine the zero level contour by further level set evolution with alfa=0
     alfa = 0
     iter_refine = 10
-    # phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
-    phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+    if seg_method == EDGE:
+        phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+    elif seg_method == THRESHOLD:
+        phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+    else:
+        raise Exception("only support edge or threshold segmentation method!")
     return phi
