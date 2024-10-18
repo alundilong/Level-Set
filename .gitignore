@@ -4,3 +4,8 @@ lv_set/lv_set/__pycache__/
 lv_set/__pycache__/visualize_3d.cpython-312.pyc
 lv_set/sphere.nii/sphere.nii
 lv_set/sphere.nii.gz
+lv_set/sharp_sphere.nii/sharp_sphere.nii
+lv_set/gradient.nii/gradient.nii
+lv_set/sharp_sphere.nii.gz
+lv_set/*.nii.gz
+lv_set/*.vti
