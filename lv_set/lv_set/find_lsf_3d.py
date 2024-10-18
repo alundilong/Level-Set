@@ -6,7 +6,7 @@ from lv_set.seg_method import EDGE, THRESHOLD
 from visualize_3d import visualize_3d_image_and_phi_dynamic  # Updated dynamic PyVista visualization function
 from lv_set.save_image import dump_image_to_nii
 
-def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, lmda=5,
+def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE):
     """
     :param img: Input 3D image as a grayscale uint8 array (0-255)
@@ -30,7 +30,7 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
         raise Exception("Please make sure the image data is in the range [0, 255]")
 
     # parameters
-    mu = 0.2 / timestep  # coefficient of the distance regularization term R(phi)
+    # mu = 0.2 / timestep  # coefficient of the distance regularization term R(phi)
 
     # Convert image to float32 for computation
     img = np.array(img, dtype='float32')

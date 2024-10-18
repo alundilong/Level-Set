@@ -19,7 +19,7 @@ from lv_set.seg_method import EDGE, THRESHOLD
 from lv_set.show_fig import show_fig1, show_fig2, draw_all
 
 
-def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, lmda=5,
+def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper = 2, lower = -2, potential_function=DOUBLE_WELL, seg_method = EDGE):
     """
     :param img: Input image as a grey scale uint8 array (0-255)
@@ -43,7 +43,7 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
         raise Exception("Please make sure the image data is in the range [0, 255]")
 
     # parameters
-    mu = 0.2 / timestep  # coefficient of the distance regularization term R(phi)
+    # mu = 0.2 / timestep  # coefficient of the distance regularization term R(phi)
 
     img = np.array(img, dtype='float32')
     img_smooth = gaussian_filter(img, sigma)  # smooth image by Gaussian convolution

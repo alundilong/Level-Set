@@ -38,6 +38,7 @@ def gourd_params():
         'timestep': 1,  # time step
         'iter_inner': 10,
         'iter_outer': 30,
+        'miu':0.2,  # coefficient of regularization term Rp(phi) 
         'lmda': 5,  # coefficient of the weighted length term L(phi)
         'alfa': 3,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
@@ -66,6 +67,7 @@ def two_cells_params():
         'timestep': 5,  # time step
         'iter_inner': 5,
         'iter_outer': 40,
+        'miu': 0.04,  # coefficient of regularization term Rp(phi) 
         'lmda': 5,  # coefficient of the weighted length term L(phi)
         'alfa': 1.5,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
