@@ -63,7 +63,7 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
 
     # start level set evolution
     for n in range(iter_outer):
-        print(upper, lower)
+        # print(upper, lower)
         # phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
         phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
         print('show fig 2 for %i time' % n)

@@ -96,7 +96,7 @@ def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon,upper,lower, timestep, i
         dirac_phi = dirac(phi, epsilon)
         # print(eps,T,np.min(phi),np.max(phi),np.min(img),np.max(img))
         area_term =  (eps-np.fabs(img-T))/eps*dirac_phi*80.0
-        print(np.min(area_term),np.max(area_term))
+        # print(np.min(area_term),np.max(area_term))
         edge_term = curvature*dirac_phi # curvature term as edge term
         phi += timestep *0.2* (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
     return phi
