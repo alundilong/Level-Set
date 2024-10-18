@@ -95,9 +95,9 @@ def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon,upper,lower, timestep, i
             raise Exception('Error: Wrong choice of potential function. Please input the string "single-well" or "double-well" in the drlse_edge function.')
         dirac_phi = dirac(phi, epsilon)
         # print(eps,T,np.min(phi),np.max(phi),np.min(img),np.max(img))
-        area_term =  (eps-np.fabs(img-T))/eps*dirac_phi*2.0
+        area_term =  (eps-np.fabs(img-T))/eps*dirac_phi*80.0
         print(np.min(area_term),np.max(area_term))
-        edge_term = curvature*dirac_phi*1.5 # curvature term as edge term
+        edge_term = curvature*dirac_phi # curvature term as edge term
         phi += timestep *0.2* (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
     return phi
 
