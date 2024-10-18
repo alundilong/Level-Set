@@ -9,3 +9,4 @@ lv_set/gradient.nii/gradient.nii
 lv_set/sharp_sphere.nii.gz
 lv_set/*.nii.gz
 lv_set/*.vti
+*.mp4
