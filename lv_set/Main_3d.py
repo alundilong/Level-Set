@@ -1,6 +1,7 @@
 import numpy as np
 from lv_set.find_lsf_3d import find_lsf
 from lv_set.potential_func import DOUBLE_WELL
+from lv_set.seg_method import *
 
 import nibabel as nib
 
@@ -81,6 +82,7 @@ def sphere_params():
         'upper': 127.5,  # upper intensity for thresholding
         'lower': -1,    # lower intensity for thresholding
         'potential_function': DOUBLE_WELL,
+        'seg_method': THRESHOLD
     }
 
 # Get the parameters for the sphere image

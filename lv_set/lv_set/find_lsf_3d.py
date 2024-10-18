@@ -1,11 +1,12 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from lv_set.drlse_algo_3d import drlse_threshold  # Assuming drlse_threshold is already updated for 3D
+from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold  # Assuming drlse_threshold is already updated for 3D
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
+from lv_set.seg_method import EDGE, THRESHOLD
 from visualize_3d import visualize_3d_image_and_phi  # Import the PyVista visualization function
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, lmda=5,
-             alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL):
+             alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method = EDGE):
     """
     :param img: Input 3D image as a grayscale uint8 array (0-255)
     :param initial_lsf: Array of the same size as img that contains the seed points for the LSF.
@@ -52,7 +53,14 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # Start level set evolution
     for n in range(iter_outer):
         # Perform threshold-based DRLSE evolution
-        phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        # phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+
+        if seg_method == EDGE:
+            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+        elif seg_method == THRESHOLD:
+            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        else:
+            raise Exception("only support edge or threshold segmentation method!")
 
         # Visualize the 3D image and segmentation result using PyVista after every outer iteration
         print(f"Visualizing after {n+1} iterations")
@@ -61,7 +69,13 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # Refine the zero-level contour by running additional iterations with alfa=0
     alfa = 0
     iter_refine = 10
-    phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_refine, potential_function)
+    # phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_refine, potential_function)
+    if seg_method == EDGE:
+        phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+    elif seg_method == THRESHOLD:
+        phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+    else:
+        raise Exception("only support edge or threshold segmentation method!")
 
     # Final visualization of the refined result
     visualize_3d_image_and_phi(img, phi)
