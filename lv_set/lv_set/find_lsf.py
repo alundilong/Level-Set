@@ -72,5 +72,6 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # refine the zero level contour by further level set evolution with alfa=0
     alfa = 0
     iter_refine = 10
-    phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+    # phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+    phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
     return phi
