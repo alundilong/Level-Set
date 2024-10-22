@@ -171,3 +171,169 @@ def neumann_bound_cond(f):
     g[1:-1, np.ix_([0, -1]), 1:-1] = g[1:-1, np.ix_([2, -3]), 1:-1]
     g[1:-1, 1:-1, np.ix_([0, -1])] = g[1:-1, 1:-1, np.ix_([2, -3])]
     return g
+
+def find_zero_crossings(phi):
+    """
+    Find the zero-crossing points of the level set function phi in 3D.
+    Zero-crossings are where the sign of phi changes.
+    """
+    diff_0 = np.diff(np.sign(phi), axis=0).astype(bool)
+    diff_1 = np.diff(np.sign(phi), axis=1).astype(bool)
+    diff_2 = np.diff(np.sign(phi), axis=2).astype(bool)
+
+    # Pad the differences with an extra layer to match the original shape of `phi`
+    padded_diff_0 = np.pad(diff_0, ((0, 1), (0, 0), (0, 0)), mode='constant', constant_values=False)
+    padded_diff_1 = np.pad(diff_1, ((0, 0), (0, 1), (0, 0)), mode='constant', constant_values=False)
+    padded_diff_2 = np.pad(diff_2, ((0, 0), (0, 0), (0, 1)), mode='constant', constant_values=False)
+
+    zero_crossings = np.where(padded_diff_0 | padded_diff_1 | padded_diff_2, 1, 0)
+    return zero_crossings
+
+def initialize_narrow_band(phi, r=3):
+    """
+    Initialize the narrow band based on zero-crossing points of phi and a neighborhood radius r in 3D.
+    """
+    zero_crossings = find_zero_crossings(phi)
+    narrow_band = np.zeros_like(phi, dtype=bool)
+
+    # Mark points in a neighborhood of radius r around zero-crossing points
+    indices = np.argwhere(zero_crossings > 0)
+    for index in indices:
+        i, j, k = index
+        narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), 
+                    max(0, j-r):min(j+r+1, phi.shape[1]), 
+                    max(0, k-r):min(k+r+1, phi.shape[2])] = True
+
+    return narrow_band
+
+def drlse_edge_narrow_band(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_function, r=3, h=4):
+    """
+    Refined narrow band implementation of the edge-based DRLSE evolution in 3D based on provided steps.
+    """
+    if not hasattr(drlse_edge, "call_count"):
+        drlse_edge.call_count = 0
+
+    phi = phi_0.copy()
+    [vz, vy, vx] = np.gradient(g)  # 3D gradient
+
+    # Step 1: Initialize narrow band
+    narrow_band = initialize_narrow_band(phi, r)
+
+    for k in range(iters):
+        drlse_edge.call_count += 1
+        # Step 2: Update the LSF only within the narrow band
+        phi = neumann_bound_cond(phi)
+        [phi_z, phi_y, phi_x] = np.gradient(phi)  # 3D gradient
+        s = np.sqrt(np.square(phi_x) + np.square(phi_y) + np.square(phi_z))  # 3D norm
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        n_z = phi_z / (s + delta)
+        curvature = div(n_x, n_y, n_z)  # 3D divergence
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace(phi, mode='nearest') - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac(phi, epsilon)
+        area_term = dirac_phi * g
+        edge_term = dirac_phi * (vx * n_x + vy * n_y + vz * n_z) + dirac_phi * g * curvature
+
+        # Apply updates only in the narrow band
+        phi[narrow_band] += timestep * (mu * dist_reg_term[narrow_band] + lmda * edge_term[narrow_band] + alfa * area_term[narrow_band])
+
+        # Step 3: Update the narrow band by finding zero-crossing points and extending the band
+        new_zero_crossings = find_zero_crossings(phi)
+        new_indices = np.argwhere(new_zero_crossings > 0)
+
+        # Update the narrow band by adding neighborhoods around new zero-crossing points
+        new_narrow_band = np.zeros_like(phi, dtype=bool)
+        for index in new_indices:
+            i, j, k = index
+            new_narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), 
+                            max(0, j-r):min(j+r+1, phi.shape[1]), 
+                            max(0, k-r):min(k+r+1, phi.shape[2])] = True
+
+        # Step 4: Assign values to new pixels in the narrow band based on step 4
+        newly_added_points = new_narrow_band & ~narrow_band
+        phi[newly_added_points] = np.where(phi[newly_added_points] > 0, h, -h)
+
+        # Step 5: Update narrow band for the next iteration
+        narrow_band = new_narrow_band.copy()
+
+        # Optional: Add termination condition based on zero-crossing changes
+        dump_image_to_vtk(phi,f"edge_innerloop_{drlse_edge.call_count}.vti")
+    return phi
+
+# Similarly, we can implement the threshold-based narrow band method for 3D:
+
+def drlse_threshold_narrow_band(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function, r=3, h=4):
+    """
+    Refined narrow band implementation of the threshold-based DRLSE evolution in 3D.
+    """
+    if not hasattr(drlse_edge, "call_count"):
+        drlse_edge.call_count = 0
+
+    phi = phi_0.copy()
+    eps = 0.5 * (upper - lower)
+    T = 0.5 * (upper + lower)
+
+    # Step 1: Initialize narrow band
+    narrow_band = initialize_narrow_band(phi, r)
+
+    for k in range(iters):
+        drlse_edge.call_count += 1
+        # Step 2: Update the LSF only within the narrow band
+        phi = neumann_bound_cond(phi)
+        [phi_z, phi_y, phi_x] = np.gradient(phi)  # 3D gradient
+        s = np.sqrt(np.square(phi_x) + np.square(phi_y) + np.square(phi_z))  # 3D norm
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        n_z = phi_z / (s + delta)
+        curvature = div(n_x, n_y, n_z)  # 3D divergence
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace(phi, mode='nearest') - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac(phi, epsilon)
+
+        # Threshold-based area term
+        area_term = (eps - np.abs(img - T)) / eps * dirac_phi * 80.0  # balloon/pressure force term
+
+        # Edge term (curvature term)
+        edge_term = curvature * dirac_phi  # curvature term as edge term
+
+        # Apply updates only in the narrow band
+        phi[narrow_band] += timestep * 0.2 * (mu * dist_reg_term[narrow_band] + lmda * edge_term[narrow_band] + alfa * area_term[narrow_band])
+
+        # Step 3: Update the narrow band by finding zero-crossing points and extending the band
+        new_zero_crossings = find_zero_crossings(phi)
+        new_indices = np.argwhere(new_zero_crossings > 0)
+
+        # Update the narrow band by adding neighborhoods around new zero-crossing points
+        new_narrow_band = np.zeros_like(phi, dtype=bool)
+        for index in new_indices:
+            i, j, k = index
+            new_narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), 
+                            max(0, j-r):min(j+r+1, phi.shape[1]), 
+                            max(0, k-r):min(k+r+1, phi.shape[2])] = True
+
+        # Step 4: Assign values to new pixels in the narrow band based on step 4
+        newly_added_points = new_narrow_band & ~narrow_band
+        phi[newly_added_points] = np.where(phi[newly_added_points] > 0, h, -h)
+
+        # Step 5: Update narrow band for the next iteration
+        narrow_band = new_narrow_band.copy()
+
+        # Optional: Add termination condition based on zero-crossing changes
+        dump_image_to_vtk(phi,f"threshold_innerloop_{drlse_edge.call_count}.vti")
+
+    return phi

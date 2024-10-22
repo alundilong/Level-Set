@@ -1,13 +1,14 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold
+from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold, drlse_edge_narrow_band, drlse_threshold_narrow_band
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
 from lv_set.seg_method import EDGE, THRESHOLD
 from visualize_3d import visualize_3d_image_and_phi_dynamic  # Updated dynamic PyVista visualization function
 from lv_set.save_image import dump_image_to_nii
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
-             alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE):
+             alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE,
+             narrow_band = True):
     """
     :param img: Input 3D image as a grayscale uint8 array (0-255)
     :param initial_lsf: Array of the same size as img that contains the seed points for the LSF.
@@ -59,9 +60,19 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     for n in range(iter_outer):
         # Perform the segmentation based on the chosen method
         if seg_method == EDGE:
-            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            if not narrow_band:
+                phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            elif narrow_band:
+                phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            else:
+                raise Exception("narrow_band or not")
         elif seg_method == THRESHOLD:
-            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            if not narrow_band:
+                phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            elif narrow_band:
+                phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            else:
+                raise Exception("narrow_band or not")
         else:
             raise Exception("Only support edge or threshold segmentation method!")
 
@@ -75,9 +86,19 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
 
     # Final refinement using the chosen segmentation method
     if seg_method == EDGE:
-        phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+        if not narrow_band:
+            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+        elif narrow_band:
+            phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+        else:
+            raise Exception("narrow_band or not")
     elif seg_method == THRESHOLD:
-        phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        if not narrow_band:
+            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        elif narrow_band:
+            phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+        else:
+            raise Exception("narrow_band or not")
     else:
         raise Exception("Only support edge or threshold segmentation method!")
 

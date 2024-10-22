@@ -62,7 +62,8 @@ def sphere_params():
         'upper': (1.0/1.5/np.sqrt(3.0)*255),  # upper intensity for thresholding
         'lower': -1,    # lower intensity for thresholding
         'potential_function': DOUBLE_WELL,
-        'seg_method': THRESHOLD
+        'seg_method': THRESHOLD,
+        'narrow_band': True
     }
 
 
@@ -121,12 +122,13 @@ def sharp_sphere_params():
         'upper': 128,  # upper intensity for thresholding
         'lower': -1,    # lower intensity for thresholding
         'potential_function': DOUBLE_WELL,
-        'seg_method': EDGE
+        'seg_method': EDGE,
+        'narrow_band': True
     }
 
 # Get the parameters for the sphere image
-params = sphere_params()
-# params = sharp_sphere_params()
+# params = sphere_params()
+params = sharp_sphere_params()
 
 # Run the level set segmentation on the 3D sphere image
 phi = find_lsf(**params)
