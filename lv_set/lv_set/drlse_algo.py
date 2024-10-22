@@ -136,3 +136,148 @@ def neumann_bound_cond(f):
     g[np.ix_([0, -1]), 1:-1] = g[np.ix_([2, -3]), 1:-1]
     g[1:-1, np.ix_([0, -1])] = g[1:-1, np.ix_([2, -3])]
     return g
+
+# New methods for narrow band implementation
+
+def find_zero_crossings(phi):
+    """
+    Find the zero-crossing points of the level set function phi.
+    Zero-crossings are where the sign of phi changes.
+    """
+    # Calculate differences along each axis and convert to boolean
+    diff_0 = np.diff(np.sign(phi), axis=0).astype(bool)
+    diff_1 = np.diff(np.sign(phi), axis=1).astype(bool)
+
+    # Pad the differences with an extra row/column of False to match the original shape of `phi`
+    padded_diff_0 = np.pad(diff_0, ((0, 1), (0, 0)), mode='constant', constant_values=False)
+    padded_diff_1 = np.pad(diff_1, ((0, 0), (0, 1)), mode='constant', constant_values=False)
+
+    # Combine the padded differences using bitwise OR and create the zero-crossings array
+    zero_crossings = np.where(padded_diff_0 | padded_diff_1, 1, 0)
+    return zero_crossings
+
+def initialize_narrow_band(phi, r=3):
+    """
+    Initialize the narrow band based on zero-crossing points of phi and a neighborhood radius r.
+    """
+    zero_crossings = find_zero_crossings(phi)
+    narrow_band = np.zeros_like(phi, dtype=bool)
+
+    # Mark points in a neighborhood of radius r around zero-crossing points
+    indices = np.argwhere(zero_crossings > 0)
+    for index in indices:
+        i, j = index
+        narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), max(0, j-r):min(j+r+1, phi.shape[1])] = True
+
+    return narrow_band
+
+def drlse_edge_narrow_band(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_function, r=3, h=4):
+    """
+    Refined narrow band implementation of the edge-based DRLSE evolution based on provided steps.
+    """
+    phi = phi_0.copy()
+    [vy, vx] = np.gradient(g)
+    
+    # Initialize narrow band
+    narrow_band = initialize_narrow_band(phi, r)
+    
+    for k in range(iters):
+        # Update the LSF only within the narrow band
+        phi = neumann_bound_cond(phi)
+        [phi_y, phi_x] = np.gradient(phi)
+        s = np.sqrt(np.square(phi_x) + np.square(phi_y))
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        curvature = div(n_x, n_y)
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace(phi, mode='nearest') - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac(phi, epsilon)
+        area_term = dirac_phi * g
+        edge_term = dirac_phi * (vx * n_x + vy * n_y) + dirac_phi * g * curvature
+
+        # Apply updates only in the narrow band
+        phi[narrow_band] += timestep * (mu * dist_reg_term[narrow_band] + lmda * edge_term[narrow_band] + alfa * area_term[narrow_band])
+
+        # Step 3: Update the narrow band by finding zero-crossing points and extending the band
+        new_zero_crossings = find_zero_crossings(phi)
+        new_indices = np.argwhere(new_zero_crossings > 0)
+
+        # Update the narrow band by adding neighborhoods around new zero-crossing points
+        new_narrow_band = np.zeros_like(phi, dtype=bool)
+        for index in new_indices:
+            i, j = index
+            new_narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), max(0, j-r):min(j+r+1, phi.shape[1])] = True
+        
+        # Assign values to new pixels in the narrow band based on step 4
+        newly_added_points = new_narrow_band & ~narrow_band
+        phi[newly_added_points] = np.where(phi[newly_added_points] > 0, h, -h)
+
+        # Update narrow band for the next iteration
+        narrow_band = new_narrow_band.copy()
+
+        # Termination condition based on zero-crossing changes (optional for early stop)
+
+    return phi
+
+def drlse_threshold_narrow_band(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function, r=3, h=4):
+    """
+    Refined narrow band implementation of the threshold-based DRLSE evolution based on provided steps.
+    """
+    phi = phi_0.copy()
+    eps = 0.5 * (upper - lower)
+    T = 0.5 * (upper + lower)
+
+    # Step 1: Initialize narrow band
+    narrow_band = initialize_narrow_band(phi, r)
+
+    for k in range(iters):
+        # Update the LSF only within the narrow band
+        phi = neumann_bound_cond(phi)
+        [phi_y, phi_x] = np.gradient(phi)
+        s = np.sqrt(np.square(phi_x) + np.square(phi_y))
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        curvature = div(n_x, n_y)
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace(phi, mode='nearest') - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac(phi, epsilon)
+        area_term = (eps - np.abs(img - T)) / eps * dirac_phi * 80.0
+        edge_term = curvature * dirac_phi
+
+        # Apply updates only in the narrow band
+        phi[narrow_band] += timestep * 0.2 * (mu * dist_reg_term[narrow_band] + lmda * edge_term[narrow_band] + alfa * area_term[narrow_band])
+
+        # Step 3: Update the narrow band by finding zero-crossing points and extending the band
+        new_zero_crossings = find_zero_crossings(phi)
+        new_indices = np.argwhere(new_zero_crossings > 0)
+
+        # Update the narrow band by adding neighborhoods around new zero-crossing points
+        new_narrow_band = np.zeros_like(phi, dtype=bool)
+        for index in new_indices:
+            i, j = index
+            new_narrow_band[max(0, i-r):min(i+r+1, phi.shape[0]), max(0, j-r):min(j+r+1, phi.shape[1])] = True
+
+        # Step 4: Assign values to new pixels in the narrow band based on step 4
+        newly_added_points = new_narrow_band & ~narrow_band
+        phi[newly_added_points] = np.where(phi[newly_added_points] > 0, h, -h)
+
+        # Update narrow band for the next iteration
+        narrow_band = new_narrow_band.copy()
+
+        # Step 5: Optional termination condition based on zero-crossing changes
+
+    return phi

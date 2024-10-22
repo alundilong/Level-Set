@@ -40,13 +40,14 @@ def gourd_params():
         'iter_outer': 30,
         'mu':0.2,  # coefficient of regularization term Rp(phi) 
         'lmda': 5,  # coefficient of the weighted length term L(phi)
-        'alfa': 3,  # coefficient of the weighted area term A(phi)
+        'alfa': -3,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
         'sigma': 0.8,  # scale parameter in Gaussian kernel
         'upper':250,
         'lower':-1,
         'potential_function': DOUBLE_WELL,
-        'seg_method': THRESHOLD
+        'seg_method': THRESHOLD,
+        'narrow_band': True
     }
 
 
@@ -75,12 +76,13 @@ def two_cells_params():
         'upper':56,
         'lower':32,
         'potential_function': DOUBLE_WELL,
-        'seg_method': THRESHOLD
+        'seg_method': THRESHOLD,
+        'narrow_band': True
     }
 
 
-# params = gourd_params()
-params = two_cells_params()
+params = gourd_params()
+# params = two_cells_params()
 phi = find_lsf(**params)
 
 print('Show final output')
