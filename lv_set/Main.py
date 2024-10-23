@@ -47,7 +47,8 @@ def gourd_params():
         'lower':-1,
         'potential_function': DOUBLE_WELL,
         'seg_method': THRESHOLD,
-        'narrow_band': True
+        'narrow_band': False,
+        'gpu': True
     }
 
 
@@ -77,12 +78,13 @@ def two_cells_params():
         'lower':32,
         'potential_function': DOUBLE_WELL,
         'seg_method': THRESHOLD,
-        'narrow_band': True
+        'narrow_band': False,
+        'gpu': True
     }
 
 
-params = gourd_params()
-# params = two_cells_params()
+# params = gourd_params()
+params = two_cells_params()
 phi = find_lsf(**params)
 
 print('Show final output')

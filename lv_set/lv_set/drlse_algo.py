@@ -15,6 +15,7 @@ import numpy as np
 from scipy.ndimage import laplace
 
 from lv_set.potential_func import SINGLE_WELL, DOUBLE_WELL
+import torch
 
 
 def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_function):  # Updated Level Set Function
@@ -281,3 +282,128 @@ def drlse_threshold_narrow_band(phi_0, img, lmda, mu, alfa, epsilon, upper, lowe
         # Step 5: Optional termination condition based on zero-crossing changes
 
     return phi
+
+### GPU-BASED IMPLEMENTATION FOR 2D USING PYTORCH ###
+
+def drlse_edge_gpu(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_function, device="cuda"):
+    """
+    GPU-accelerated implementation of edge-based DRLSE using PyTorch for 2D images.
+    """
+    phi = torch.tensor(phi_0, dtype=torch.float32, device=device).clone()
+    g = torch.tensor(g, dtype=torch.float32, device=device)
+    [vy, vx] = torch.gradient(g)  # Compute gradients on the GPU
+
+    for k in range(iters):
+        phi = neumann_bound_cond_gpu(phi)  # Neumann boundary condition for 2D on GPU
+        [phi_y, phi_x] = torch.gradient(phi)  # 2D gradient on GPU
+
+        s = torch.sqrt(phi_x**2 + phi_y**2)  # 2D norm of gradients
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        curvature = div_gpu(n_x, n_y)  # 2D divergence on GPU
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace_gpu(phi) - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2_gpu_2d(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac_gpu(phi, epsilon)
+        area_term = dirac_phi * g
+        edge_term = dirac_phi * (vx * n_x + vy * n_y) + dirac_phi * g * curvature
+        phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
+
+    return phi.cpu().numpy()  # Move result back to CPU for further processing if needed
+
+def drlse_threshold_gpu(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function, device="cuda"):
+    """
+    GPU-accelerated implementation of threshold-based DRLSE using PyTorch for 2D images.
+    """
+    phi = torch.tensor(phi_0, dtype=torch.float32, device=device).clone()
+    img = torch.tensor(img, dtype=torch.float32, device=device)
+    eps = 0.5 * (upper - lower)
+    T = 0.5 * (upper + lower)
+
+    for k in range(iters):
+        phi = neumann_bound_cond_gpu(phi)
+        [phi_y, phi_x] = torch.gradient(phi)
+        s = torch.sqrt(phi_x**2 + phi_y**2)
+        delta = 1e-10
+        n_x = phi_x / (s + delta)
+        n_y = phi_y / (s + delta)
+        curvature = div_gpu(n_x, n_y)
+
+        if potential_function == SINGLE_WELL:
+            dist_reg_term = laplace_gpu(phi) - curvature
+        elif potential_function == DOUBLE_WELL:
+            dist_reg_term = dist_reg_p2_gpu(phi)
+        else:
+            raise Exception('Error: Wrong choice of potential function.')
+
+        dirac_phi = dirac_gpu(phi, epsilon)
+        area_term = (eps - torch.abs(img - T)) / eps * dirac_phi * 80.0
+        edge_term = curvature * dirac_phi
+        phi += timestep * 0.2 * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
+
+    return phi.cpu().numpy()
+
+def laplace_gpu(input):
+    """
+    Compute the Laplacian on GPU using a correct 2D convolution kernel.
+    """
+    # Create a 2D Laplacian kernel with shape (1, 1, 3, 3)
+    kernel = torch.tensor([[[[0, 1, 0], 
+                             [1, -4, 1], 
+                             [0, 1, 0]]]], 
+                          device=input.device, dtype=torch.float32)
+    
+    # Reshape kernel to the correct shape for conv2d: (out_channels, in_channels, height, width)
+    kernel = kernel.view(1, 1, 3, 3)  # (1, 1, H, W)
+    
+    # Add batch and channel dimensions to the input tensor (N, C, H, W)
+    input = input.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
+
+    # Perform 2D convolution with appropriate padding
+    lap = torch.nn.functional.conv2d(input, kernel, stride=1, padding=1)
+    
+    return lap.squeeze()  # Remove the added dimensions
+
+def dirac_gpu(x, sigma):
+    """
+    Compute the Dirac delta function on GPU for 2D images.
+    """
+    f = (1 / (2 * sigma)) * (1 + torch.cos(np.pi * x / sigma))
+    b = (x <= sigma) & (x >= -sigma)
+    return f * b
+
+def neumann_bound_cond_gpu(f):
+    """
+    Apply Neumann boundary conditions on GPU for 2D images.
+    """
+    g = f.clone()
+    g[0, :], g[-1, :], g[:, 0], g[:, -1] = g[1, :], g[-2, :], g[:, 1], g[:, -2]
+    return g
+
+def div_gpu(nx, ny):
+    """
+    Compute 2D divergence on GPU.
+    """
+    _, nxx = torch.gradient(nx)
+    nyy, _ = torch.gradient(ny)
+    return nxx + nyy
+
+def dist_reg_p2_gpu(phi):
+    """
+    Compute the distance regularization term with double-well potential p2 on GPU for 2D images.
+    """
+    [phi_y, phi_x] = torch.gradient(phi)
+    s = torch.sqrt(phi_x**2 + phi_y**2)
+    
+    a = (s >= 0) & (s <= 1)
+    b = (s > 1)
+    ps = a * torch.sin(2 * np.pi * s) / (2 * np.pi) + b * (s - 1)
+    dps = ((ps != 0) * ps + (ps == 0)) / ((s != 0) * s + (s == 0))
+
+    return div_gpu(dps * phi_x - phi_x, dps * phi_y - phi_y) + laplace_gpu(phi)

@@ -13,15 +13,15 @@ Released Under MIT License
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-from lv_set.drlse_algo import drlse_edge, drlse_threshold, drlse_edge_narrow_band, drlse_threshold_narrow_band
+from lv_set.drlse_algo import drlse_edge, drlse_threshold, drlse_edge_narrow_band, drlse_threshold_narrow_band, drlse_edge_gpu, drlse_threshold_gpu
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
 from lv_set.seg_method import EDGE, THRESHOLD
 from lv_set.show_fig import show_fig1, show_fig2, draw_all
-
+import torch
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper = 2, lower = -2, potential_function=DOUBLE_WELL, seg_method = EDGE, 
-             narrow_band = False):
+             narrow_band = False, gpu = False):
     """
     :param img: Input image as a grey scale uint8 array (0-255)
     :param initial_lsf: Array as same size as the img that contains the seed points for the LSF.
@@ -63,19 +63,32 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     if potential_function != SINGLE_WELL:
         potential_function = DOUBLE_WELL  # default choice of potential function
 
+    if gpu:
+        print(f"cuda: {torch.cuda.is_available()}")
+
     # start level set evolution
     for n in range(iter_outer):
         # print(upper, lower)
         if seg_method == EDGE:
             if not narrow_band:
-                phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                if not gpu:
+                    phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                elif gpu and torch.cuda.is_available():
+                    phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                else:
+                    raise Exception("gpu is not found!")
             elif narrow_band:
                 phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
             else:    
                 raise Exception("narrow_band or not")
         elif seg_method == THRESHOLD:
             if not narrow_band:
-                phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                if not gpu:
+                    phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                elif gpu and torch.cuda.is_available():
+                    phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                else:
+                    raise Exception("gpu is not found!")
             elif narrow_band:
                 phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
             else:    
@@ -90,12 +103,22 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     iter_refine = 10
     if seg_method == EDGE:
         if not narrow_band:
-            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+            if not gpu:
+                phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+            elif gpu and torch.cuda.is_available():
+                phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
+            else:
+                raise Exception("gpu is not found!")
         elif narrow_band:
             phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_refine, potential_function)
     elif seg_method == THRESHOLD:
         if not narrow_band:
-            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            if not gpu:
+                phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            elif gpu and torch.cuda.is_available():
+                phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            else:
+                raise Exception("gpu is not found!")
         elif narrow_band:
             phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
         else:
