@@ -411,6 +411,9 @@ def drlse_threshold_gpu(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, times
         edge_term = curvature * dirac_phi
         phi += timestep * 0.2 * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
         dump_image_to_vtk(phi.cpu().numpy(),f"threshold_innerloop_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(area_term.cpu().numpy(),f"threshold_area_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(edge_term.cpu().numpy(),f"threshold_edge_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(dist_reg_term.cpu().numpy(),f"threshold_dist_reg_term_{drlse_edge.call_count}.vti")
     return phi.cpu().numpy()
 
 def laplace_gpu(input):
