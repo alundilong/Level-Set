@@ -375,6 +375,9 @@ def drlse_edge_gpu(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential
         edge_term = dirac_phi * (vx * n_x + vy * n_y + vz * n_z) + dirac_phi * g * curvature
         phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
         dump_image_to_vtk(phi.cpu().numpy(),f"edge_innerloop_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(area_term.cpu().numpy(),f"edge_area_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(edge_term.cpu().numpy(),f"edge_edge_term_{drlse_edge.call_count}.vti")
+        dump_image_to_vtk(dist_reg_term.cpu().numpy(),f"edge_dist_reg_term_{drlse_edge.call_count}.vti")
     return phi.cpu().numpy()  # Move result back to CPU for further processing if needed
 
 def drlse_threshold_gpu(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function, device="cuda"):
