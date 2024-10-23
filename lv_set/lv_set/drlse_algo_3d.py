@@ -63,9 +63,9 @@ def drlse_edge(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential_fun
         edge_term = dirac_phi * (vx * n_x + vy * n_y + vz * n_z) + dirac_phi * g * curvature
         phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
         dump_image_to_vtk(phi,f"edge_innerloop_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(area_term,f"edge_area_term_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(edge_term,f"edge_edge_term_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(dist_reg_term,f"edge_dist_reg_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(area_term,f"edge_area_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(edge_term,f"edge_edge_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(dist_reg_term,f"edge_dist_reg_term_{drlse_edge.call_count}.vti")
     return phi
 
 def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function):
@@ -118,9 +118,9 @@ def drlse_threshold(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep,
         # Update phi using the distance regularization, edge, and area terms
         phi += timestep * 0.2 * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
         dump_image_to_vtk(phi,f"threshold_innerloop_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(area_term,f"threshold_area_term_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(edge_term,f"threshold_edge_term_{drlse_edge.call_count}.vti")
-        dump_image_to_vtk(dist_reg_term,f"threshold_dist_reg_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(area_term,f"threshold_area_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(edge_term,f"threshold_edge_term_{drlse_edge.call_count}.vti")
+        # dump_image_to_vtk(dist_reg_term,f"threshold_dist_reg_term_{drlse_edge.call_count}.vti")
     
     return phi
 
