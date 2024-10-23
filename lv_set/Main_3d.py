@@ -54,7 +54,7 @@ def sphere_params():
         'timestep': 1,  # time step
         'iter_inner': 10,
         'iter_outer': 30,
-        'mu': 0.2,  # coefficient of regularization term Rp(phi)
+        'mu': 0.2,  # coefficient of regularization term Rp(phi) 
         'lmda': 5,  # coefficient of the weighted length term L(phi)
         'alfa': -3,  # coefficient of the weighted area term A(phi)
         'epsilon': 1.5,  # parameter that specifies the width of the DiracDelta function
@@ -63,7 +63,8 @@ def sphere_params():
         'lower': -1,    # lower intensity for thresholding
         'potential_function': DOUBLE_WELL,
         'seg_method': THRESHOLD,
-        'narrow_band': False
+        'narrow_band': False,
+        'gpu': False
     }
 
 
@@ -123,12 +124,13 @@ def sharp_sphere_params():
         'lower': -1,    # lower intensity for thresholding
         'potential_function': DOUBLE_WELL,
         'seg_method': EDGE,
-        'narrow_band': True
+        'narrow_band': False,
+        'gpu': True
     }
 
 # Get the parameters for the sphere image
-params = sphere_params()
-# params = sharp_sphere_params()
+# params = sphere_params()
+params = sharp_sphere_params()
 
 # Run the level set segmentation on the 3D sphere image
 phi = find_lsf(**params)

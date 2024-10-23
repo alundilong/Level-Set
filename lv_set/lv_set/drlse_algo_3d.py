@@ -344,11 +344,15 @@ def drlse_edge_gpu(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential
     """
     GPU-accelerated implementation of edge-based DRLSE using PyTorch.
     """
+    if not hasattr(drlse_edge, "call_count"):
+        drlse_edge.call_count = 0
+
     phi = torch.tensor(phi_0, dtype=torch.float32, device=device).clone()
     g = torch.tensor(g, dtype=torch.float32, device=device)
     [vz, vy, vx] = torch.gradient(g)  # Compute gradients on the GPU
 
     for k in range(iters):
+        drlse_edge.call_count += 1
         phi = neumann_bound_cond_gpu(phi)  # Neumann boundary condition for 3D on GPU
         [phi_z, phi_y, phi_x] = torch.gradient(phi)  # 3D gradient on GPU
 
@@ -370,19 +374,22 @@ def drlse_edge_gpu(phi_0, g, lmda, mu, alfa, epsilon, timestep, iters, potential
         area_term = dirac_phi * g
         edge_term = dirac_phi * (vx * n_x + vy * n_y + vz * n_z) + dirac_phi * g * curvature
         phi += timestep * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
-
+        dump_image_to_vtk(phi.cpu().numpy(),f"edge_innerloop_{drlse_edge.call_count}.vti")
     return phi.cpu().numpy()  # Move result back to CPU for further processing if needed
 
 def drlse_threshold_gpu(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iters, potential_function, device="cuda"):
     """
     GPU-accelerated implementation of threshold-based DRLSE using PyTorch.
     """
+    if not hasattr(drlse_edge, "call_count"):
+        drlse_edge.call_count = 0
     phi = torch.tensor(phi_0, dtype=torch.float32, device=device).clone()
     img = torch.tensor(img, dtype=torch.float32, device=device)
     eps = 0.5 * (upper - lower)
     T = 0.5 * (upper + lower)
 
     for k in range(iters):
+        drlse_edge.call_count += 1
         phi = neumann_bound_cond_gpu(phi)
         [phi_z, phi_y, phi_x] = torch.gradient(phi)
         s = torch.sqrt(phi_x**2 + phi_y**2 + phi_z**2)
@@ -403,18 +410,20 @@ def drlse_threshold_gpu(phi_0, img, lmda, mu, alfa, epsilon, upper, lower, times
         area_term = (eps - torch.abs(img - T)) / eps * dirac_phi * 80.0
         edge_term = curvature * dirac_phi
         phi += timestep * 0.2 * (mu * dist_reg_term + lmda * edge_term + alfa * area_term)
-
+        dump_image_to_vtk(phi.cpu().numpy(),f"threshold_innerloop_{drlse_edge.call_count}.vti")
     return phi.cpu().numpy()
 
 def laplace_gpu(input):
     """
     Compute the Laplacian on GPU using a convolution kernel.
     """
+    # Create a 3D Laplacian kernel with shape (1, 1, 3, 3, 3)
     kernel = torch.tensor([[[[0, 0, 0], [0, 1, 0], [0, 0, 0]], 
                             [[0, 1, 0], [1, -6, 1], [0, 1, 0]], 
                             [[0, 0, 0], [0, 1, 0], [0, 0, 0]]]], 
-                           device=input.device, dtype=torch.float32)
-    kernel = kernel / 6.0
+                          device=input.device, dtype=torch.float32)
+    kernel = kernel.view(1, 1, 3, 3, 3)
+
     input = input.unsqueeze(0).unsqueeze(0)  # Add batch and channel dimensions
     lap = torch.nn.functional.conv3d(input, kernel, padding=1)
     return lap.squeeze()

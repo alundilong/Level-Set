@@ -9,7 +9,7 @@ import torch
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE,
-             narrow_band = True):
+             narrow_band = True, gpu = False):
     """
     :param img: Input 3D image as a grayscale uint8 array (0-255)
     :param initial_lsf: Array of the same size as img that contains the seed points for the LSF.
@@ -62,22 +62,24 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
         # Perform the segmentation based on the chosen method
         if seg_method == EDGE:
             if not narrow_band:
-                if not torch.cuda.is_available():
+                if not gpu:
                     phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
-                else:
-                    print(f"CUDA available: {torch.cuda.is_available()}")
+                elif gpu and torch.cuda.is_available():
                     phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                else:
+                    raise Exception("gpu is not found!")
             elif narrow_band:
                 phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
             else:
                 raise Exception("narrow_band or not")
         elif seg_method == THRESHOLD:
             if not narrow_band:
-                if not torch.cuda.is_available():
+                if not gpu:
                     phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
-                else:
-                    print(f"CUDA available: {torch.cuda.is_available()}")
+                elif gpu and torch.cuda.is_available():
                     phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                else:
+                    raise Exception("gpu is not found!")
             elif narrow_band:
                 phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
             else:
@@ -96,22 +98,24 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # Final refinement using the chosen segmentation method
     if seg_method == EDGE:
         if not narrow_band:
-            if not torch.cuda.is_available():
+            if not gpu:
                 phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
-            else:
-                print(f"CUDA available: {torch.cuda.is_available()}")
+            elif gpu and torch.cuda.is_available():
                 phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            else:
+                raise Exception("gpu is not found!")
         elif narrow_band:
             phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
         else:
             raise Exception("narrow_band or not")
     elif seg_method == THRESHOLD:
         if not narrow_band:
-            if not torch.cuda.is_available():
+            if not gpu:
                 phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
-            else:
-                print(f"CUDA available: {torch.cuda.is_available()}")
+            elif gpu and torch.cuda.is_available():
                 phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            else:
+                raise Exception("narrow_band or not")
         elif narrow_band:
             phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
         else:
