@@ -1,10 +1,11 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold, drlse_edge_narrow_band, drlse_threshold_narrow_band
+from lv_set.drlse_algo_3d import drlse_edge, drlse_threshold, drlse_edge_narrow_band, drlse_threshold_narrow_band, drlse_edge_gpu, drlse_threshold_gpu
 from lv_set.potential_func import DOUBLE_WELL, SINGLE_WELL
 from lv_set.seg_method import EDGE, THRESHOLD
 from visualize_3d import visualize_3d_image_and_phi_dynamic  # Updated dynamic PyVista visualization function
 from lv_set.save_image import dump_image_to_nii
+import torch
 
 def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10, iter_outer=30, mu=0.2, lmda=5,
              alfa=-3, epsilon=1.5, sigma=0.8, upper=2, lower=-2, potential_function=DOUBLE_WELL, seg_method=EDGE,
@@ -61,14 +62,22 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
         # Perform the segmentation based on the chosen method
         if seg_method == EDGE:
             if not narrow_band:
-                phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                if not torch.cuda.is_available():
+                    phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+                else:
+                    print(f"CUDA available: {torch.cuda.is_available()}")
+                    phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
             elif narrow_band:
                 phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
             else:
                 raise Exception("narrow_band or not")
         elif seg_method == THRESHOLD:
             if not narrow_band:
-                phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                if not torch.cuda.is_available():
+                    phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+                else:
+                    print(f"CUDA available: {torch.cuda.is_available()}")
+                    phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
             elif narrow_band:
                 phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
             else:
@@ -87,14 +96,22 @@ def find_lsf(img: np.ndarray, initial_lsf: np.ndarray, timestep=1, iter_inner=10
     # Final refinement using the chosen segmentation method
     if seg_method == EDGE:
         if not narrow_band:
-            phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            if not torch.cuda.is_available():
+                phi = drlse_edge(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
+            else:
+                print(f"CUDA available: {torch.cuda.is_available()}")
+                phi = drlse_edge_gpu(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
         elif narrow_band:
             phi = drlse_edge_narrow_band(phi, g, lmda, mu, alfa, epsilon, timestep, iter_inner, potential_function)
         else:
             raise Exception("narrow_band or not")
     elif seg_method == THRESHOLD:
         if not narrow_band:
-            phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            if not torch.cuda.is_available():
+                phi = drlse_threshold(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
+            else:
+                print(f"CUDA available: {torch.cuda.is_available()}")
+                phi = drlse_threshold_gpu(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
         elif narrow_band:
             phi = drlse_threshold_narrow_band(phi, img, lmda, mu, alfa, epsilon, upper, lower, timestep, iter_inner, potential_function)
         else:
