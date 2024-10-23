@@ -28,7 +28,7 @@ def dump_image_to_vtk(phi, filename):
     dims = phi.shape
 
     # Convert the numpy array (phi) to a VTK array
-    vtk_data_array = numpy_support.numpy_to_vtk(num_array=phi.ravel(), deep=True, array_type=vtk.VTK_FLOAT)
+    vtk_data_array = numpy_support.numpy_to_vtk(num_array=phi.ravel(order='F'), deep=True, array_type=vtk.VTK_FLOAT)
 
     # Create a VTK ImageData object
     image_data = vtk.vtkImageData()
